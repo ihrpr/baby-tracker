@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f4f0">
+  <title>Baby Tracker</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+<main class="wrap">
+
+  <!-- Shown until js/config.js is filled in -->
+  <section id="view-config" hidden>
+    <h1>👶 Baby Tracker</h1>
+    <div class="card">
+      <p>This copy of the app isn't configured yet.</p>
+      <p class="muted">The Google client ID and API key are missing from
+        <code>js/config.js</code> — see the README for setup steps.</p>
+    </div>
+  </section>
+
+  <!-- Sign in -->
+  <section id="view-signin" hidden>
+    <h1>👶 Baby Tracker</h1>
+    <div class="card">
+      <p>Track feeds, sleep, nappies and more — together with your partner.</p>
+      <p class="muted">Everything is stored in a Google Sheet in your own
+        Google Drive. Nothing is stored anywhere else, and only people you
+        share that sheet with can see it.</p>
+      <button id="signinBtn" class="primary">Sign in with Google</button>
+    </div>
+    <p id="signinStatus" class="status"></p>
+  </section>
+
+  <!-- Choose / create the data spreadsheet -->
+  <section id="view-connect" hidden>
+    <h1>👶 Baby Tracker</h1>
+    <div class="card">
+      <h2>Set up your tracker</h2>
+      <p>Your data lives in a Google Sheet. Create a new one, or open one
+        that was shared with you.</p>
+      <button id="createBtn" class="primary">Create a new tracker sheet</button>
+      <p class="muted">We'll create an empty spreadsheet called “Baby Tracker”
+        in your Google Drive. You can open, export or delete it at any time.</p>
+      <button id="pickBtn" class="secondary">Open an existing tracker sheet</button>
+      <p class="muted">Already tracking, or joining a partner? If a tracker
+        sheet was shared with you, pick it here to connect this device.</p>
+    </div>
+    <div class="card">
+      <h2>Sharing with a partner</h2>
+      <p class="muted">Both steps are needed: 1) share the sheet with them as
+        Editor from Google Sheets; 2) they sign in here and use “Open an
+        existing tracker sheet” to pick it.</p>
+    </div>
+    <p id="connectStatus" class="status"></p>
+  </section>
+
+  <!-- The tracker -->
+  <section id="view-app" hidden>
+    <div class="topbar">
+      <h1>👶 Baby Tracker</h1>
+      <a id="sheetLink" class="sheet-link" target="_blank" rel="noopener">📊 All data</a>
+    </div>
+
+    <div id="openList"></div>
+
+    <h2>Day summary</h2>
+    <div class="card" id="summary"></div>
+
+    <h2>Last 24 hours</h2>
+    <div id="todayList"></div>
+
+    <p id="appStatus" class="status"></p>
+
+    <div class="footer-actions">
+      <button id="refreshBtn" class="secondary">Refresh</button>
+      <button id="switchBtn" class="linkish">Switch sheet</button>
+      <button id="signoutBtn" class="linkish">Sign out</button>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
