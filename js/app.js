@@ -1,6 +1,6 @@
 /**
  * View logic: sign-in, connect a spreadsheet, log/edit entries, day summary,
- * last 24 hours, and the stats tab.
+ * the today-and-yesterday list, and the stats tab.
  */
 
 import * as g from './google.js';
@@ -262,7 +262,11 @@ function resetForm() {
 
 function render() {
   const now = Date.now();
-  const cutoff = now - 24 * 60 * 60 * 1000;
+  // the list covers today and the whole of yesterday
+  const yesterday = new Date();
+  yesterday.setHours(0, 0, 0, 0);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const cutoff = yesterday.getTime();
   const isTimed = (e) => (TYPES[e.type] || {}).timed;
   const recent = events.filter((e) =>
     e.startMs >= cutoff || (e.endMs && e.endMs >= cutoff) || (isTimed(e) && !e.endMs));
