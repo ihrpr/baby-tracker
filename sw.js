@@ -4,7 +4,7 @@
  * cached — network-first keeps the app itself fresh after deploys.
  */
 
-const CACHE = 'baby-tracker-v1';
+const CACHE = 'baby-tracker-v2';
 const SHELL = [
   '.',
   'index.html',
@@ -18,6 +18,9 @@ const SHELL = [
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
+  'icons/icon-maskable-512.png',
+  'icons/apple-touch-icon.png',
+  'icons/favicon-64.png',
 ];
 
 self.addEventListener('install', (event) => {

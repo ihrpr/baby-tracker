@@ -11,13 +11,13 @@ import {
 } from './format.js';
 
 const TYPES = {
-  feed:   { label: 'Breastfeed',        emoji: '🤱', timed: true },
-  bottle: { label: 'Bottle',            emoji: '🍼', timed: false },
-  sleep:  { label: 'Sleep',             emoji: '😴', timed: true },
-  play:   { label: 'Play / tummy time', emoji: '🧸', timed: true },
-  pump:   { label: 'Pump',              emoji: '🥛', timed: false },
-  wet:    { label: 'Wet nappy',         emoji: '💧', timed: false },
-  dirty:  { label: 'Dirty nappy',       emoji: '💩', timed: false },
+  feed:   { label: 'Breastfeed',        short: 'Breast',  emoji: '🤱', timed: true },
+  bottle: { label: 'Bottle',            short: 'Bottle',  emoji: '🍼', timed: false },
+  sleep:  { label: 'Sleep',             short: 'Sleep',   emoji: '😴', timed: true },
+  play:   { label: 'Play / tummy time', short: 'Play',    emoji: '🧸', timed: true },
+  pump:   { label: 'Pump',              short: 'Pump',    emoji: '🥛', timed: false },
+  wet:    { label: 'Wet nappy',         short: 'Wet',     emoji: '💧', timed: false },
+  dirty:  { label: 'Dirty nappy',       short: 'Dirty',   emoji: '💩', timed: false },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -47,9 +47,56 @@ const numVal = (el) => {
   return v === '' ? null : Number(v);
 };
 
+// ---------- demo mode: open index.html?demo for a design preview ----------
+
+const DEMO = new URLSearchParams(location.search).has('demo');
+
+function demoEvents() {
+  const out = [];
+  const now = Date.now();
+  const h = 3600000;
+  let id = 0;
+  const add = (type, agoH, o = {}) => {
+    const startMs = now - agoH * h;
+    const durationMin = o.durationMin != null ? o.durationMin : null;
+    out.push({
+      row: 0, id: 'demo-' + (id++), type, startMs,
+      endMs: o.open ? null : durationMin != null ? startMs + durationMin * 60000 : null,
+      durationMin, side: o.side || '',
+      amountMl: o.amountMl != null ? o.amountMl : null,
+      notes: o.notes || '', loggedBy: 'demo@example.com',
+      formulaMl: o.formulaMl != null ? o.formulaMl : null,
+    });
+  };
+  add('feed', 0.3, { open: true, side: 'L' }); // running now
+  for (let d = 0; d < 30; d++) {
+    for (let t = 1; t < 24; t += 3) {
+      const ago = d * 24 + t;
+      add('feed', ago, { durationMin: 12 + ((t + d) % 4) * 6, side: t % 2 ? 'L' : 'R' });
+      if (t % 6 === 1) add('wet', ago - 0.4);
+      if (t % 9 === 4) add('dirty', ago - 0.6, { notes: d === 0 ? 'Mucus' : '' });
+    }
+    add('bottle', d * 24 + 9.5, { amountMl: 60, formulaMl: 30 });
+    add('pump', d * 24 + 13, { amountMl: 40 + (d % 3) * 10 });
+    add('sleep', d * 24 + 4, { durationMin: 150 });
+    add('play', d * 24 + 11, { durationMin: 25 });
+  }
+  out.sort((a, b) => b.startMs - a.startMs);
+  return out;
+}
+
 // ---------- boot ----------
 
 async function boot() {
+  if (DEMO) {
+    events = demoEvents();
+    show('view-app');
+    $('sheetLink').hidden = true;
+    render();
+    if (new URLSearchParams(location.search).get('tab') === 'stats') switchTab('stats');
+    if (!tick) tick = setInterval(render, 30000);
+    return;
+  }
   if (!g.isConfigured()) { show('view-config'); return; }
   show('view-signin');
   setStatus('signinStatus', 'Checking sign-in…');
@@ -119,6 +166,7 @@ function connectSheet(id) {
 // ---------- data ----------
 
 async function loadData() {
+  if (DEMO) { render(); return; }
   $('sheetLink').href = store.sheetUrl(sheetId);
   if (!events.length) setStatus('appStatus', 'Loading…');
   try {
@@ -136,6 +184,7 @@ async function loadData() {
 
 /** Run a write, then refetch. Errors surface as alerts, state stays intact. */
 async function busy(fn) {
+  if (DEMO) { alert('Demo mode — changes are not saved.'); return false; }
   setStatus('appStatus', 'Saving…');
   try {
     await fn();
@@ -185,12 +234,20 @@ $('rangeSeg').querySelectorAll('button').forEach((b) => {
 
 // ---------- quick log ----------
 
-function fillTypeSelect(sel) {
-  sel.innerHTML = Object.entries(TYPES)
-    .map(([k, t]) => `<option value="${k}">${t.emoji} ${t.label}</option>`).join('');
+$('mType').innerHTML = Object.entries(TYPES)
+  .map(([k, t]) => `<option value="${k}">${t.emoji} ${t.label}</option>`).join('');
+
+let curType = 'feed';
+function buildTypeGrid() {
+  const grid = $('typeGrid');
+  grid.innerHTML = Object.entries(TYPES).map(([k, t]) =>
+    `<button class="type-btn${k === curType ? ' on' : ''}" data-type="${k}">` +
+    `<span class="icn t-${k}">${t.emoji}</span><span>${t.short}</span></button>`).join('');
+  grid.querySelectorAll('button').forEach((b) => {
+    b.onclick = () => { curType = b.dataset.type; buildTypeGrid(); syncForm(); };
+  });
 }
-fillTypeSelect($('type'));
-fillTypeSelect($('mType'));
+buildTypeGrid();
 
 function segSetup(segEl) {
   segEl.querySelectorAll('button').forEach((b) => {
@@ -208,7 +265,7 @@ segSetup($('sideSeg'));
 segSetup($('mSideSeg'));
 
 function syncForm() {
-  const type = $('type').value;
+  const type = curType;
   const t = TYPES[type];
   const earlier = $('earlier').checked;
   $('sideSeg').hidden = type !== 'feed';
@@ -218,7 +275,6 @@ function syncForm() {
   $('durWrap').hidden = !t.timed;
   $('goBtn').textContent = earlier ? 'Save' : (t.timed ? 'Start ' + t.label.toLowerCase() : 'Log now');
 }
-$('type').onchange = syncForm;
 $('earlier').onchange = () => {
   if ($('earlier').checked && !$('startInput').value) {
     $('startInput').value = toLocalInput(Date.now());
@@ -228,7 +284,7 @@ $('earlier').onchange = () => {
 syncForm();
 
 $('goBtn').onclick = async () => {
-  const type = $('type').value;
+  const type = curType;
   const t = TYPES[type];
   const earlier = $('earlier').checked;
   const p = { type, notes: $('notes').value.trim() };
@@ -262,6 +318,8 @@ function resetForm() {
 
 function render() {
   const now = Date.now();
+  $('topDate').textContent = new Date().toLocaleDateString(undefined,
+    { weekday: 'long', day: 'numeric', month: 'long' });
   // the list covers today and the whole of yesterday
   const yesterday = new Date();
   yesterday.setHours(0, 0, 0, 0);
@@ -283,13 +341,12 @@ function renderOpen(open, now) {
     const t = TYPES[e.type] || { label: e.type, emoji: '❓' };
     const card = document.createElement('div');
     card.className = 'open-card';
-    card.innerHTML = `<span>${t.emoji}</span>` +
+    card.innerHTML = `<span class="icn t-${e.type}">${t.emoji}</span>` +
       `<div class="grow"><div class="t-label">${t.label}${e.side ? ' · ' + e.side : ''}</div>` +
-      `<div class="t-sub">started ${fmtTime(e.startMs)}</div></div>` +
+      `<div class="t-sub"><span class="live-dot"></span>started ${fmtTime(e.startMs)}</div></div>` +
       `<div class="t-elapsed">${fmtMin(elapsedMin(e, now))}</div>`;
     const btn = document.createElement('button');
-    btn.className = 'secondary';
-    btn.style.width = 'auto';
+    btn.className = 'stop-btn';
     btn.textContent = 'Stop';
     btn.onclick = () => busy(() => store.stopEvent(sheetId, e, Date.now()));
     card.appendChild(btn);
@@ -430,7 +487,7 @@ function renderList(recent, now) {
       : e.durationMin != null ? fmtMin(e.durationMin) : '';
     const item = document.createElement('div');
     item.className = 'evt';
-    item.innerHTML = `<span>${t.emoji}</span>` +
+    item.innerHTML = `<span class="icn t-${e.type}">${t.emoji}</span>` +
       `<div class="grow"><div class="e-label">${t.label}</div>` +
       `<div class="e-sub">${eventDetails(e)}</div></div>` +
       `<div class="e-time"><b>${fmtTime(e.startMs)}</b>${dur}</div>`;

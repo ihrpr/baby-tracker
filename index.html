@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f4f0">
+  <meta name="theme-color" content="#f7f5f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#191816" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Baby Tracker">
   <title>Baby Tracker</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/favicon-64.png" sizes="64x64">
   <link rel="stylesheet" href="css/styles.css">
   <script type="module" src="js/app.js"></script>
 </head>
@@ -67,8 +68,14 @@
   <!-- The tracker -->
   <section id="view-app" hidden>
     <div class="topbar">
-      <h1>👶 Baby Tracker</h1>
-      <a id="sheetLink" class="sheet-link" target="_blank" rel="noopener">📊 All data</a>
+      <div class="brand">
+        <img class="logo" src="icons/icon-192.png" alt="">
+        <div>
+          <h1>Baby Tracker</h1>
+          <div class="brand-sub" id="topDate"></div>
+        </div>
+      </div>
+      <a id="sheetLink" class="sheet-link" target="_blank" rel="noopener">📊 Data</a>
     </div>
 
     <div class="tabs">
@@ -77,10 +84,11 @@
     </div>
 
     <div id="logView">
+      <div class="col-a">
       <div id="openList"></div>
 
       <div class="card">
-        <select id="type"></select>
+        <div class="type-grid" id="typeGrid"></div>
         <div class="seg" id="sideSeg" hidden>
           <button data-side="L">Left</button>
           <button data-side="R">Right</button>
@@ -107,9 +115,12 @@
 
       <h2>Day summary</h2>
       <div class="card" id="summary"></div>
+      </div>
 
+      <div class="col-b">
       <h2>Today &amp; yesterday</h2>
       <div id="todayList"></div>
+      </div>
     </div>
 
     <div id="statsView" hidden>

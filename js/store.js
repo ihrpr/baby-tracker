@@ -112,6 +112,14 @@ export async function inspectSheet(spreadsheetId) {
 
 const blankOrNum = (v) => (v == null || v === '' || !isFinite(Number(v)) ? '' : Number(v));
 
+// crypto.randomUUID needs Safari 15.4+ / secure context — fall back gracefully
+const uuid = () => (crypto.randomUUID
+  ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 3) | 8).toString(16);
+    }));
+
 const sheetIdCache = {};
 
 async function logSheetId(spreadsheetId) {
@@ -150,7 +158,7 @@ export async function addEvent(spreadsheetId, p, userEmail) {
   const startMs = Number.isFinite(p.startMs) ? p.startMs : Date.now();
   const hasDur = Number.isFinite(p.durationMin);
   const row = [
-    crypto.randomUUID(),
+    uuid(),
     p.type,
     msToSerial(startMs),
     hasDur ? msToSerial(startMs + p.durationMin * 60000) : '',
