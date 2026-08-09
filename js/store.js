@@ -110,6 +110,135 @@ export async function inspectSheet(spreadsheetId) {
 
 // ---------- writes ----------
 
+const blankOrNum = (v) => (v == null || v === '' || !isFinite(Number(v)) ? '' : Number(v));
+
+const sheetIdCache = {};
+
+async function logSheetId(spreadsheetId) {
+  if (sheetIdCache[spreadsheetId] != null) return sheetIdCache[spreadsheetId];
+  const meta = await apiFetch(`${API}/${spreadsheetId}?fields=sheets.properties`);
+  const log = meta.sheets.find((s) => s.properties.title === 'Log');
+  if (!log) throw new Error('The Log tab is missing from this spreadsheet.');
+  sheetIdCache[spreadsheetId] = log.properties.sheetId;
+  return log.properties.sheetId;
+}
+
+/**
+ * Confirm a row still holds the given event id (rows shift when someone
+ * deletes an entry on another device); falls back to scanning the id column.
+ */
+async function resolveRow(spreadsheetId, id, hintRow) {
+  if (hintRow) {
+    const res = await apiFetch(
+      `${API}/${spreadsheetId}/values/${encodeURIComponent(`Log!A${hintRow}`)}`);
+    if (((res.values || [])[0] || [])[0] === id) return hintRow;
+  }
+  const res = await apiFetch(
+    `${API}/${spreadsheetId}/values/${encodeURIComponent('Log!A2:A')}`);
+  const rows = res.values || [];
+  for (let i = 0; i < rows.length; i++) {
+    if ((rows[i] || [])[0] === id) return i + 2;
+  }
+  throw new Error('Entry not found — it may have been deleted.');
+}
+
+/**
+ * p: {type, startMs?, durationMin?, side?, amountMl?, formulaMl?, notes?}
+ * No startMs → starts now. durationMin given → closed event.
+ */
+export async function addEvent(spreadsheetId, p, userEmail) {
+  const startMs = Number.isFinite(p.startMs) ? p.startMs : Date.now();
+  const hasDur = Number.isFinite(p.durationMin);
+  const row = [
+    crypto.randomUUID(),
+    p.type,
+    msToSerial(startMs),
+    hasDur ? msToSerial(startMs + p.durationMin * 60000) : '',
+    hasDur ? p.durationMin : '',
+    p.side || '',
+    blankOrNum(p.amountMl),
+    p.notes || '',
+    userEmail || '',
+    blankOrNum(p.formulaMl),
+  ];
+  await apiFetch(
+    `${API}/${spreadsheetId}/values/${encodeURIComponent('Log!A2:J')}:append` +
+    '?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
+    { method: 'POST', body: JSON.stringify({ values: [row] }) });
+}
+
+export async function stopEvent(spreadsheetId, ev, endMs) {
+  const row = await resolveRow(spreadsheetId, ev.id, ev.row);
+  const end = Number.isFinite(endMs) ? endMs : Date.now();
+  const durationMin = ev.startMs != null
+    ? Math.max(1, Math.round((end - ev.startMs) / 60000)) : 1;
+  await apiFetch(
+    `${API}/${spreadsheetId}/values/${encodeURIComponent(`Log!D${row}:E${row}`)}` +
+    '?valueInputOption=RAW',
+    { method: 'PUT', body: JSON.stringify({ values: [[msToSerial(end), durationMin]] }) });
+}
+
+/** p: {id, row, type, startMs, durationMin?, side?, amountMl?, formulaMl?, notes?} */
+export async function updateEvent(spreadsheetId, p) {
+  if (!Number.isFinite(p.startMs)) throw new Error('Please set a valid start time.');
+  const row = await resolveRow(spreadsheetId, p.id, p.row);
+  const hasDur = Number.isFinite(p.durationMin);
+  await apiFetch(`${API}/${spreadsheetId}/values:batchUpdate`, {
+    method: 'POST',
+    body: JSON.stringify({
+      valueInputOption: 'RAW',
+      data: [
+        {
+          range: `Log!B${row}:H${row}`,
+          values: [[
+            p.type,
+            msToSerial(p.startMs),
+            hasDur ? msToSerial(p.startMs + p.durationMin * 60000) : '',
+            hasDur ? p.durationMin : '',
+            p.side || '',
+            blankOrNum(p.amountMl),
+            p.notes || '',
+          ]],
+        },
+        { range: `Log!J${row}`, values: [[blankOrNum(p.formulaMl)]] },
+      ],
+    }),
+  });
+}
+
+export async function deleteEvent(spreadsheetId, ev) {
+  const row = await resolveRow(spreadsheetId, ev.id, ev.row);
+  const sheetId = await logSheetId(spreadsheetId);
+  await apiFetch(`${API}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    body: JSON.stringify({
+      requests: [{
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: row - 1, endIndex: row },
+        },
+      }],
+    }),
+  });
+}
+
+export async function setSetting(spreadsheetId, key, value) {
+  const res = await apiFetch(
+    `${API}/${spreadsheetId}/values/${encodeURIComponent('Settings!A1:A')}`);
+  const rows = res.values || [];
+  const idx = rows.findIndex((r) => (r || [])[0] === key);
+  if (idx === -1) {
+    await apiFetch(
+      `${API}/${spreadsheetId}/values/${encodeURIComponent('Settings!A1:B')}:append` +
+      '?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
+      { method: 'POST', body: JSON.stringify({ values: [[key, value]] }) });
+  } else {
+    await apiFetch(
+      `${API}/${spreadsheetId}/values/${encodeURIComponent(`Settings!B${idx + 1}`)}` +
+      '?valueInputOption=RAW',
+      { method: 'PUT', body: JSON.stringify({ values: [[value]] }) });
+  }
+}
+
 /** Create a fresh tracker spreadsheet in the user's Drive; returns its ID. */
 export async function createTrackerSheet() {
   const created = await apiFetch(API, {

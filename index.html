@@ -4,7 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f4f0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Baby Tracker">
   <title>Baby Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="css/styles.css">
   <script type="module" src="js/app.js"></script>
 </head>
@@ -65,13 +71,65 @@
       <a id="sheetLink" class="sheet-link" target="_blank" rel="noopener">📊 All data</a>
     </div>
 
-    <div id="openList"></div>
+    <div class="tabs">
+      <button id="tabLog" class="tab on">Log</button>
+      <button id="tabStats" class="tab">Stats</button>
+    </div>
 
-    <h2>Day summary</h2>
-    <div class="card" id="summary"></div>
+    <div id="logView">
+      <div id="openList"></div>
 
-    <h2>Last 24 hours</h2>
-    <div id="todayList"></div>
+      <div class="card">
+        <select id="type"></select>
+        <div class="seg" id="sideSeg" hidden>
+          <button data-side="L">Left</button>
+          <button data-side="R">Right</button>
+          <button data-side="both">Both</button>
+        </div>
+        <div id="bottleExtras" hidden>
+          <label class="f">Breast milk (ml)
+            <input id="bottleBm" type="number" inputmode="numeric" min="0"></label>
+          <label class="f">Formula (ml)
+            <input id="bottleF" type="number" inputmode="numeric" min="0"></label>
+        </div>
+        <label class="f" id="amountWrap" hidden>Amount pumped (ml)
+          <input id="amount" type="number" inputmode="numeric" min="0"></label>
+        <label class="toggle"><input id="earlier" type="checkbox"> Happened earlier</label>
+        <div id="earlierFields" hidden>
+          <label class="f">When it started
+            <input id="startInput" type="datetime-local"></label>
+          <label class="f" id="durWrap">Duration (minutes)
+            <input id="durInput" type="number" inputmode="numeric" min="1"></label>
+        </div>
+        <input id="notes" type="text" placeholder="Notes (optional)">
+        <button id="goBtn" class="primary"></button>
+      </div>
+
+      <h2>Day summary</h2>
+      <div class="card" id="summary"></div>
+
+      <h2>Last 24 hours</h2>
+      <div id="todayList"></div>
+    </div>
+
+    <div id="statsView" hidden>
+      <div class="seg range" id="rangeSeg">
+        <button data-r="7">7 days</button>
+        <button data-r="14" class="on">14 days</button>
+        <button data-r="30">30 days</button>
+      </div>
+      <div class="card">
+        <h3>Milk per day (ml)</h3>
+        <div class="legend">
+          <span><i style="background:var(--s1)"></i>Breastfed (≈)</span>
+          <span><i style="background:var(--s2)"></i>Pumped milk</span>
+          <span><i style="background:var(--s3)"></i>Formula</span>
+        </div>
+        <div id="milkChart"></div>
+      </div>
+      <h2>Daily intake (ml)</h2>
+      <table class="stat-table" id="statTable"></table>
+    </div>
 
     <p id="appStatus" class="status"></p>
 
@@ -81,6 +139,38 @@
       <button id="signoutBtn" class="linkish">Sign out</button>
     </div>
   </section>
+
+  <!-- Edit modal -->
+  <div id="overlay" hidden>
+    <div id="modal">
+      <h2>Edit entry</h2>
+      <select id="mType"></select>
+      <div class="seg" id="mSideSeg" hidden>
+        <button data-side="L">Left</button>
+        <button data-side="R">Right</button>
+        <button data-side="both">Both</button>
+      </div>
+      <div id="mBottleExtras" hidden>
+        <label class="f">Breast milk (ml)
+          <input id="mBottleBm" type="number" inputmode="numeric" min="0"></label>
+        <label class="f">Formula (ml)
+          <input id="mBottleF" type="number" inputmode="numeric" min="0"></label>
+      </div>
+      <label class="f" id="mAmountWrap" hidden>Amount pumped (ml)
+        <input id="mAmount" type="number" inputmode="numeric" min="0"></label>
+      <label class="f">Start
+        <input id="mStart" type="datetime-local"></label>
+      <label class="f" id="mDurWrap">Duration (minutes — empty = still running)
+        <input id="mDur" type="number" inputmode="numeric" min="1"></label>
+      <label class="f">Notes
+        <input id="mNotes" type="text"></label>
+      <div class="modal-actions">
+        <button id="mCancel" class="cancel">Cancel</button>
+        <button id="mSave" class="save">Save</button>
+      </div>
+      <button id="mDelete" class="delete-btn">Delete entry</button>
+    </div>
+  </div>
 
 </main>
 

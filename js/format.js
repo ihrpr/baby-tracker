@@ -30,3 +30,19 @@ export function elapsedMin(e, now = Date.now()) {
   const end = e.endMs || now;
   return Math.max(0, Math.round((end - e.startMs) / 60000));
 }
+
+const pad = (n) => String(n).padStart(2, '0');
+
+/** ms → value for an <input type="datetime-local">, in local time. */
+export function toLocalInput(ms) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** <input type="datetime-local"> value → ms, or null if empty/invalid. */
+export function fromLocalInput(v) {
+  if (!v) return null;
+  const ms = new Date(v).getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
