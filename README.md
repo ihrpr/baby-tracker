@@ -31,7 +31,7 @@ One spreadsheet, two tabs:
   `id, type, start_time, end_time, duration_min, side, amount_ml, notes, logged_by, formula_ml`.
   Types: `feed` (breastfeed, timed), `bottle` (breast milk + formula ml),
   `sleep`, `play` (timed), `pump`, `wet`, `dirty`.
-  Times are ISO-8601 strings with UTC offset (`2026-08-08T14:30:00+01:00`).
+  Times are native spreadsheet datetime cells, read/written as day-serial numbers.
 - **Settings** — shared key/value pairs, e.g. `breastfeed_ml` (assumed ml
   per breastfeed, used in totals).
 

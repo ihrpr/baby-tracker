@@ -5,11 +5,12 @@
  *   Log:      one row per event, columns HEADERS below.
  *   Settings: key/value pairs shared by everyone using the sheet.
  *
- * Times are stored as ISO-8601 strings with a UTC offset
- * (e.g. "2026-08-08T14:30:00+01:00") so they are unambiguous regardless of
- * the spreadsheet's timezone. Legacy rows written as datetime cells are
- * still readable (they arrive as day-serial numbers and are interpreted in
- * the device's timezone).
+ * Times are stored as native spreadsheet datetime cells — the same format
+ * the original Apps Script app writes. Reads use UNFORMATTED_VALUE, so
+ * datetimes arrive as day-serial numbers and are converted locally; writes
+ * (phase 2) will send serial numbers back. Serial numbers are used instead
+ * of date strings deliberately: strings go through Sheets' locale-dependent
+ * parsing (dd/MM vs MM/dd), which is a proven way to corrupt data.
  */
 
 import { apiFetch } from './google.js';
@@ -28,21 +29,18 @@ export const sheetUrl = (spreadsheetId) =>
 
 // ---------- time serialization ----------
 
-export function toIso(ms) {
-  const d = new Date(ms);
-  const pad = (n, w = 2) => String(Math.abs(n)).padStart(w, '0');
-  const offMin = -d.getTimezoneOffset();
-  const off = (offMin < 0 ? '-' : '+') + pad(Math.trunc(offMin / 60)) + ':' + pad(offMin % 60);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${off}`;
-}
-
 const SHEETS_EPOCH_MS = Date.UTC(1899, 11, 30);
 
 function serialToMs(serial) {
   // A serial is a timezone-naive wall-clock time; interpret it as local time.
   const asUtc = SHEETS_EPOCH_MS + serial * 86400000;
   return asUtc + new Date(asUtc).getTimezoneOffset() * 60000;
+}
+
+/** Inverse of serialToMs — for writing datetime cells (RAW, never strings). */
+export function msToSerial(ms) {
+  const asUtc = ms - new Date(ms).getTimezoneOffset() * 60000;
+  return (asUtc - SHEETS_EPOCH_MS) / 86400000;
 }
 
 function parseTs(v) {
@@ -132,6 +130,20 @@ export async function createTrackerSheet() {
         { range: 'Log!A1', values: [HEADERS] },
         { range: 'Settings!A1', values: [Object.entries(DEFAULT_SETTINGS)[0]] },
       ],
+    }),
+  });
+  // datetime display format for the time columns (values are written as serials)
+  const logSheetId = created.sheets[0].properties.sheetId;
+  await apiFetch(`${API}/${created.spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    body: JSON.stringify({
+      requests: [{
+        repeatCell: {
+          range: { sheetId: logSheetId, startColumnIndex: 2, endColumnIndex: 4, startRowIndex: 1 },
+          cell: { userEnteredFormat: { numberFormat: { type: 'DATE_TIME', pattern: 'dd/MM/yyyy hh:mm:ss' } } },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      }],
     }),
   });
   return created.spreadsheetId;
