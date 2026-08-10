@@ -31,14 +31,50 @@
 
   <!-- Sign in -->
   <section id="view-signin" hidden>
-    <h1>👶 Baby Tracker</h1>
+    <div class="hero">
+      <img class="hero-logo" src="icons/icon-192.png" alt="">
+      <h1>Baby Tracker</h1>
+      <p class="tagline">Feeds, sleep and nappies — logged in seconds,
+        together with your partner.</p>
+    </div>
+
     <div class="card">
-      <p>Track feeds, sleep, nappies and more — together with your partner.</p>
-      <p class="muted">Everything is stored in a Google Sheet in your own
-        Google Drive. Nothing is stored anywhere else, and only people you
-        share that sheet with can see it.</p>
+      <div class="feature">
+        <span class="icn t-feed">🤱</span>
+        <div><b>One-tap logging</b><span>Live timers for feeds, sleep and play</span></div>
+      </div>
+      <div class="feature">
+        <span class="icn t-bottle">📈</span>
+        <div><b>Summary &amp; stats</b><span>Milk intake, last feed, nappies at a glance</span></div>
+      </div>
+      <div class="feature">
+        <span class="icn t-pump">🔒</span>
+        <div><b>Yours alone</b><span>Data lives in a Google Sheet in your Drive</span></div>
+      </div>
       <button id="signinBtn" class="primary">Sign in with Google</button>
     </div>
+
+    <h2>Use it like an app</h2>
+    <details class="card platform">
+      <summary>🍎 On iPhone</summary>
+      <ol class="steps">
+        <li>Open this page in your <b>browser</b></li>
+        <li>Tap <b>Share</b>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"
+            stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </li>
+        <li>Choose <b>Add to Home Screen</b></li>
+      </ol>
+    </details>
+    <details class="card platform">
+      <summary>🤖 On Android</summary>
+      <ol class="steps">
+        <li>Open this page in your <b>browser</b></li>
+        <li>Tap the <b>⋮</b> menu</li>
+        <li>Choose <b>Add to Home screen</b></li>
+      </ol>
+    </details>
+
     <p id="signinStatus" class="status"></p>
   </section>
 
