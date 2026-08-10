@@ -40,7 +40,9 @@ self.addEventListener('fetch', (event) => {
   // only same-origin GETs; Google auth/API traffic passes straight through
   if (event.request.method !== 'GET' || url.origin !== location.origin) return;
   event.respondWith(
-    fetch(event.request)
+    // no-cache: always revalidate with the server so a fresh index.html can
+    // never run against stale scripts from the browser's HTTP cache
+    fetch(event.request, { cache: 'no-cache' })
       .then((resp) => {
         const copy = resp.clone();
         caches.open(CACHE).then((c) => c.put(event.request, copy));

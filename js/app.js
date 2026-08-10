@@ -237,12 +237,26 @@ $('rangeSeg').querySelectorAll('button').forEach((b) => {
 $('mType').innerHTML = Object.entries(TYPES)
   .map(([k, t]) => `<option value="${k}">${t.emoji} ${t.label}</option>`).join('');
 
+const ALL_TYPES = Object.keys(TYPES);
+
+/** Activity types shown in the UI, from the shared enabled_types setting. */
+function enabledTypes() {
+  const raw = String(settings.enabled_types || '').trim();
+  if (!raw) return new Set(ALL_TYPES);
+  const set = new Set(raw.split(',').map((s) => s.trim()).filter((k) => TYPES[k]));
+  return set.size ? set : new Set(ALL_TYPES);
+}
+
 let curType = 'feed';
 function buildTypeGrid() {
+  const en = enabledTypes();
+  if (!en.has(curType)) curType = en.values().next().value;
   const grid = $('typeGrid');
-  grid.innerHTML = Object.entries(TYPES).map(([k, t]) =>
-    `<button class="type-btn${k === curType ? ' on' : ''}" data-type="${k}">` +
-    `<span class="icn t-${k}">${t.emoji}</span><span>${t.short}</span></button>`).join('');
+  grid.innerHTML = Object.entries(TYPES)
+    .filter(([k]) => en.has(k))
+    .map(([k, t]) =>
+      `<button class="type-btn${k === curType ? ' on' : ''}" data-type="${k}">` +
+      `<span class="icn t-${k}">${t.emoji}</span><span>${t.short}</span></button>`).join('');
   grid.querySelectorAll('button').forEach((b) => {
     b.onclick = () => { curType = b.dataset.type; buildTypeGrid(); syncForm(); };
   });
@@ -328,6 +342,8 @@ function render() {
   const isTimed = (e) => (TYPES[e.type] || {}).timed;
   const recent = events.filter((e) =>
     e.startMs >= cutoff || (e.endMs && e.endMs >= cutoff) || (isTimed(e) && !e.endMs));
+  buildTypeGrid(); // reflect the enabled-activities setting
+  syncForm();
   renderOpen(recent.filter((e) => isTimed(e) && !e.endMs), now);
   renderSummary(now);
   renderList(recent, now);
@@ -382,22 +398,27 @@ function renderSummary(now) {
     `<div class="sum-row sub"><span class="lbl">${label}</span><span class="v">${v}</span></div>`);
 
   const assumedMl = Number(settings.breastfeed_ml) || 60;
+  const en = enabledTypes();
   const feeds = todayOf('feed');
   const bottles = todayOf('bottle');
 
   // when were breasts last emptied (breastfeed or pump, whichever is later)
-  const lastEmpty = events.find((e) => e.type === 'feed' || e.type === 'pump');
-  pushRow('🤱', 'Breasts emptied', '',
-    [openFeed ? 'feeding now'
-      : lastEmpty ? agoDur(lastEmpty.startMs, now) + (lastEmpty.type === 'pump' ? ' (pump)' : ' (feed)')
-      : '—']);
+  if (en.has('feed') || en.has('pump')) {
+    const lastEmpty = events.find((e) => e.type === 'feed' || e.type === 'pump');
+    pushRow('🤱', 'Breasts emptied', '',
+      [openFeed ? 'feeding now'
+        : lastEmpty ? agoDur(lastEmpty.startMs, now) + (lastEmpty.type === 'pump' ? ' (pump)' : ' (feed)')
+        : '—']);
+  }
 
   // when the baby last ate (breastfeed or bottle, whichever is later)
-  const lastAte = events.find((e) => e.type === 'feed' || e.type === 'bottle');
-  pushRow('👶', 'Last ate', '',
-    [openFeed ? 'feeding now'
-      : lastAte ? agoDur(lastAte.startMs, now) + (lastAte.type === 'bottle' ? ' (bottle)' : ' (breast)')
-      : '—']);
+  if (en.has('feed') || en.has('bottle')) {
+    const lastAte = events.find((e) => e.type === 'feed' || e.type === 'bottle');
+    pushRow('👶', 'Last ate', '',
+      [openFeed ? 'feeding now'
+        : lastAte ? agoDur(lastAte.startMs, now) + (lastAte.type === 'bottle' ? ' (bottle)' : ' (breast)')
+        : '—']);
+  }
 
   // total milk taken today, breastfeeds counted at the assumed amount
   const bmMl = bottles.reduce((a, e) => a + (e.amountMl || 0), 0);
@@ -410,49 +431,94 @@ function renderSummary(now) {
   if (formulaMl) pushSub('Formula', `${formulaMl}ml`);
 
   const sleeps = todayOf('sleep');
-  const sleepsAll = allOf('sleep');
-  const sleepingNow = sleepsAll.some((e) => !e.endMs);
-  const lastWake = sleepsAll.find((e) => e.endMs);
-  const sleepMin = sleeps.reduce((a, e) => a + overlapMin(e, dayStartMs, now), 0);
-  pushRow('😴', 'Sleep',
-    sleepingNow ? 'sleeping now'
-      : lastWake ? 'awake for ' + fmtMin(Math.max(0, Math.floor((now - lastWake.endMs) / 60000))) : '',
-    [sleepMin ? fmtMin(sleepMin) : '']);
+  if (en.has('sleep') || sleeps.length) {
+    const sleepsAll = allOf('sleep');
+    const sleepingNow = sleepsAll.some((e) => !e.endMs);
+    const lastWake = sleepsAll.find((e) => e.endMs);
+    const sleepMin = sleeps.reduce((a, e) => a + overlapMin(e, dayStartMs, now), 0);
+    pushRow('😴', 'Sleep',
+      sleepingNow ? 'sleeping now'
+        : lastWake ? 'awake for ' + fmtMin(Math.max(0, Math.floor((now - lastWake.endMs) / 60000))) : '',
+      [sleepMin ? fmtMin(sleepMin) : '']);
+  }
 
   const plays = todayOf('play');
-  const lastPlay = allOf('play')[0];
-  const playMin = plays.reduce((a, e) => a + overlapMin(e, dayStartMs, now), 0);
-  pushRow('🧸', 'Play',
-    lastPlay ? (!lastPlay.endMs ? 'playing now' : 'last ' + agoDur(lastPlay.startMs, now)) : '',
-    [playMin ? fmtMin(playMin) : '']);
+  if (en.has('play') || plays.length) {
+    const lastPlay = allOf('play')[0];
+    const playMin = plays.reduce((a, e) => a + overlapMin(e, dayStartMs, now), 0);
+    pushRow('🧸', 'Play',
+      lastPlay ? (!lastPlay.endMs ? 'playing now' : 'last ' + agoDur(lastPlay.startMs, now)) : '',
+      [playMin ? fmtMin(playMin) : '']);
+  }
 
   const pumps = todayOf('pump');
-  const lastPump = allOf('pump')[0];
-  const pumpMl = pumps.reduce((a, e) => a + (e.amountMl || 0), 0);
-  pushRow('🥛', 'Pumped',
-    lastPump ? 'last ' + agoDur(lastPump.startMs, now) : '',
-    [pumps.length ? `${pumps.length}×` : '', pumpMl ? `${pumpMl}ml` : '']);
+  if (en.has('pump') || pumps.length) {
+    const lastPump = allOf('pump')[0];
+    const pumpMl = pumps.reduce((a, e) => a + (e.amountMl || 0), 0);
+    pushRow('🥛', 'Pumped',
+      lastPump ? 'last ' + agoDur(lastPump.startMs, now) : '',
+      [pumps.length ? `${pumps.length}×` : '', pumpMl ? `${pumpMl}ml` : '']);
+  }
 
   const wet = todayOf('wet').length;
   const dirty = todayOf('dirty').length;
-  const lastNappy = events.find((e) => e.type === 'wet' || e.type === 'dirty');
-  pushRow('💧💩', 'Nappies',
-    lastNappy ? 'last ' + agoDur(lastNappy.startMs, now) : '',
-    [(wet || dirty) ? `${wet} wet · ${dirty} dirty` : '']);
+  if (en.has('wet') || en.has('dirty') || wet || dirty) {
+    const lastNappy = events.find((e) => e.type === 'wet' || e.type === 'dirty');
+    pushRow('💧💩', 'Nappies',
+      lastNappy ? 'last ' + agoDur(lastNappy.startMs, now) : '',
+      [(wet || dirty) ? `${wet} wet · ${dirty} dirty` : '']);
+  }
 
-  rows.push(`<div class="sum-note" id="bfNote">1 breastfeed ≈ ${assumedMl}ml — tap to change</div>`);
+  if (en.has('feed')) {
+    rows.push(`<div class="sum-note" id="bfNote">1 breastfeed ≈ ${assumedMl}ml — tap to change</div>`);
+  }
   $('summary').innerHTML = rows.join('');
-  $('bfNote').onclick = changeAssumedMl;
+  const note = $('bfNote');
+  if (note) note.onclick = openSettings;
 }
 
-function changeAssumedMl() {
-  const cur = Number(settings.breastfeed_ml) || 60;
-  const v = prompt('Assumed ml per breastfeed:', cur);
-  if (v == null) return;
-  const n = Number(v);
-  if (!(n > 0)) { alert('Please enter a number of ml.'); return; }
-  busy(() => store.setSetting(sheetId, 'breastfeed_ml', n));
+// ---------- settings ----------
+
+let sSelected = new Set();
+
+function openSettings() {
+  $('sBfMl').value = Number(settings.breastfeed_ml) || 60;
+  sSelected = enabledTypes();
+  buildSettingsGrid();
+  $('settingsOverlay').hidden = false;
 }
+
+function buildSettingsGrid() {
+  const grid = $('sTypeGrid');
+  grid.innerHTML = Object.entries(TYPES).map(([k, t]) =>
+    `<button class="type-btn${sSelected.has(k) ? ' on' : ''}" data-type="${k}">` +
+    `<span class="icn t-${k}">${t.emoji}</span><span>${t.short}</span></button>`).join('');
+  grid.querySelectorAll('button').forEach((b) => {
+    b.onclick = () => {
+      const k = b.dataset.type;
+      if (sSelected.has(k)) sSelected.delete(k); else sSelected.add(k);
+      buildSettingsGrid();
+    };
+  });
+}
+
+$('settingsBtn').onclick = openSettings;
+$('sCancel').onclick = () => { $('settingsOverlay').hidden = true; };
+$('settingsOverlay').onclick = (ev) => {
+  if (ev.target === $('settingsOverlay')) $('settingsOverlay').hidden = true;
+};
+
+$('sSave').onclick = async () => {
+  const n = Number($('sBfMl').value);
+  if (!(n > 0)) { alert('Please enter the nursing amount in ml.'); return; }
+  if (!sSelected.size) { alert('Keep at least one activity visible.'); return; }
+  const list = ALL_TYPES.filter((k) => sSelected.has(k)).join(',');
+  const ok = await busy(async () => {
+    await store.setSetting(sheetId, 'breastfeed_ml', n);
+    await store.setSetting(sheetId, 'enabled_types', list);
+  });
+  if (ok) $('settingsOverlay').hidden = true;
+};
 
 function eventDetails(e) {
   const parts = [];

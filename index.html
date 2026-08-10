@@ -111,7 +111,10 @@
           <div class="brand-sub" id="topDate"></div>
         </div>
       </div>
-      <a id="sheetLink" class="sheet-link" target="_blank" rel="noopener">📊 Data</a>
+      <div class="top-actions">
+        <a id="sheetLink" class="sheet-link" target="_blank" rel="noopener">📊 Data</a>
+        <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙️</button>
+      </div>
     </div>
 
     <div class="tabs">
@@ -216,6 +219,24 @@
         <button id="mSave" class="save">Save</button>
       </div>
       <button id="mDelete" class="delete-btn">Delete entry</button>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settingsOverlay" hidden>
+    <div id="settingsModal">
+      <h2>Settings</h2>
+      <label class="f">Approximate nursing amount (ml)
+        <input id="sBfMl" type="number" inputmode="numeric" min="1"></label>
+      <p class="muted hint">Each breastfeed counts as this much in the milk totals.</p>
+      <div class="modal-sub">Show in quick log</div>
+      <div class="type-grid" id="sTypeGrid"></div>
+      <p class="muted hint">Hidden activities disappear from logging and the
+        day summary — existing entries stay untouched.</p>
+      <div class="modal-actions">
+        <button id="sCancel" class="cancel">Cancel</button>
+        <button id="sSave" class="save">Save</button>
+      </div>
     </div>
   </div>
 

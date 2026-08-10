@@ -332,22 +332,21 @@ details.platform[open] summary::after { transform: rotate(225deg); }
 
 /* ---------- modal ---------- */
 
-#overlay {
+#overlay, #settingsOverlay {
   position: fixed; inset: 0;
   background: rgba(20, 16, 10, .45);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   display: flex; align-items: flex-end; justify-content: center; z-index: 10;
 }
-#overlay[hidden] { display: none; }
-#modal {
+#modal, #settingsModal {
   background: var(--bg);
   border-radius: 18px 18px 0 0;
   width: 100%; max-width: 480px;
   padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
   max-height: 88vh; overflow-y: auto;
 }
-#modal h2 { margin-top: 0; color: var(--ink); font-size: 18px; text-transform: none; letter-spacing: 0; }
+#modal h2, #settingsModal h2 { margin-top: 0; color: var(--ink); font-size: 18px; text-transform: none; letter-spacing: 0; }
 .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
 .modal-actions .save {
   flex: 2; background: linear-gradient(var(--accent), var(--accent-strong));
@@ -407,11 +406,22 @@ details.platform[open] summary::after { transform: rotate(225deg); }
   #statsView { max-width: 640px; margin: 0 auto; }
   .cols { height: 180px; }
 
-  #overlay { align-items: center; padding: 24px; }
-  #modal {
+  #overlay, #settingsOverlay { align-items: center; padding: 24px; }
+  #modal, #settingsModal {
     border-radius: 18px;
     max-width: 440px;
     box-shadow: var(--shadow-lift);
     padding-bottom: 24px;
   }
 }
+
+/* settings */
+.top-actions { display: flex; align-items: center; gap: 2px; }
+.icon-btn { background: none; font-size: 18px; padding: 6px 8px; border-radius: 9px; }
+.icon-btn:hover { background: var(--chip); }
+.modal-sub {
+  margin-top: 18px; font-size: 13px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.hint { font-size: 12px; margin: 6px 0 0; }
+#settingsModal .type-grid { margin-top: 8px; }

@@ -22,7 +22,10 @@ export const HEADERS = [
   'side', 'amount_ml', 'notes', 'logged_by', 'formula_ml',
 ];
 export const TIMED_TYPES = ['feed', 'sleep', 'play'];
-export const DEFAULT_SETTINGS = { breastfeed_ml: 60 };
+export const DEFAULT_SETTINGS = {
+  breastfeed_ml: 60,
+  enabled_types: 'feed,bottle,sleep,play,pump,wet,dirty',
+};
 
 export const sheetUrl = (spreadsheetId) =>
   `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
@@ -265,7 +268,7 @@ export async function createTrackerSheet() {
       valueInputOption: 'RAW',
       data: [
         { range: 'Log!A1', values: [HEADERS] },
-        { range: 'Settings!A1', values: [Object.entries(DEFAULT_SETTINGS)[0]] },
+        { range: 'Settings!A1', values: Object.entries(DEFAULT_SETTINGS) },
       ],
     }),
   });
