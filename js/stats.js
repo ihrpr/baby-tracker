@@ -19,6 +19,7 @@ export function renderStats(events, settings, range) {
         ? d.toLocaleDateString(undefined, { weekday: 'short' })
         : String(d.getDate()),
       full: d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }),
+      brief: d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }),
     });
   }
   days.forEach((d) => {
@@ -32,6 +33,9 @@ export function renderStats(events, settings, range) {
     d.bmMl = bottles.reduce((a, e) => a + (e.amountMl || 0), 0);
     d.fMl = bottles.reduce((a, e) => a + (e.formulaMl || 0), 0);
     d.totalMl = d.bfMl + d.bmMl + d.fMl;
+    const pumps = started('pump');
+    d.pumpCount = pumps.length;
+    d.pumpMl = pumps.reduce((a, e) => a + (e.amountMl || 0), 0);
   });
 
   // stacked columns: breastfed (bottom) / pumped milk / formula (top)
@@ -56,10 +60,52 @@ export function renderStats(events, settings, range) {
       `<span>${(days.length - 1 - i) % labelStep === 0 ? d.label : ''}</span>`).join('') +
     '</div>';
 
+  // pump output: single-series bars + a least-squares trend line
+  const pMax = Math.max(...days.map((d) => d.pumpMl), 1);
+  const CH = 108; // bar area height, must match the CSS
+  const barsHtml = days.map((d) => {
+    const h = d.pumpMl ? Math.max(2, Math.round(d.pumpMl / pMax * CH)) : 0;
+    const title = `${d.full}: ${d.pumpMl}ml pumped` +
+      (d.pumpCount ? ` (${d.pumpCount}×)` : '');
+    return `<div class="col" title="${title}">` +
+      (range === 7 ? `<div class="col-val">${d.pumpMl || ''}</div>` : '') +
+      (h ? `<div class="col-bar s2 cap" style="height:${h}px"></div>` : '') +
+      '</div>';
+  }).join('');
+
+  // least-squares fit over the daily totals (days with no pumping count as 0)
+  const n = days.length;
+  const meanX = (n - 1) / 2;
+  const meanY = days.reduce((a, d) => a + d.pumpMl, 0) / n;
+  let num = 0, den = 0;
+  days.forEach((d, i) => { num += (i - meanX) * (d.pumpMl - meanY); den += (i - meanX) ** 2; });
+  const slope = den ? num / den : 0; // ml per day
+  const yAt = (i) => Math.min(pMax, Math.max(0, meanY + slope * (i - meanX)));
+  const pt = (i) => `${((i + 0.5) / n * 100).toFixed(2)},${(CH - yAt(i) / pMax * CH).toFixed(1)}`;
+  const trendSvg =
+    `<svg class="trend" viewBox="0 0 100 ${CH}" preserveAspectRatio="none">` +
+    `<line x1="${pt(0).split(',')[0]}" y1="${pt(0).split(',')[1]}"` +
+    ` x2="${pt(n - 1).split(',')[0]}" y2="${pt(n - 1).split(',')[1]}"/></svg>`;
+
+  const weekly = Math.round(slope * 7);
+  const anyPump = days.some((d) => d.pumpMl > 0);
+  $('pumpTrend').textContent = anyPump
+    ? `avg ${Math.round(meanY)}ml/day · trend ${weekly > 0 ? '↗ +' : weekly < 0 ? '↘ ' : '→ '}` +
+      `${weekly ? weekly + 'ml/week' : 'steady'}`
+    : 'No pumping logged in this range';
+
+  $('pumpChart').innerHTML =
+    `<div class="chart-wrap"><div class="cols${dense}">${barsHtml}</div>${anyPump ? trendSvg : ''}</div>` +
+    `<div class="days${dense}">` +
+    days.map((d, i) =>
+      `<span>${(days.length - 1 - i) % labelStep === 0 ? d.label : ''}</span>`).join('') +
+    '</div>';
+
   // table, newest first
   $('statTable').innerHTML =
-    '<tr><th>Day</th><th>Feeds</th><th>Breast ≈</th><th>Pumped</th><th>Formula</th><th>Total</th></tr>' +
+    '<tr><th>Day</th><th>Feeds</th><th>Breast ≈</th><th>Bottle bm</th><th>Formula</th><th>Total</th><th>Pump out</th></tr>' +
     days.slice().reverse().map((d) =>
-      `<tr><td>${d.full}</td><td>${d.feedCount || '–'}</td><td>${d.bfMl || '–'}</td>` +
-      `<td>${d.bmMl || '–'}</td><td>${d.fMl || '–'}</td><td><b>${d.totalMl || '–'}</b></td></tr>`).join('');
+      `<tr><td title="${d.full}">${d.brief}</td><td>${d.feedCount || '–'}</td><td>${d.bfMl || '–'}</td>` +
+      `<td>${d.bmMl || '–'}</td><td>${d.fMl || '–'}</td><td><b>${d.totalMl || '–'}</b></td>` +
+      `<td>${d.pumpMl || '–'}</td></tr>`).join('');
 }

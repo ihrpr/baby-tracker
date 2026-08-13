@@ -77,7 +77,7 @@ function demoEvents() {
       if (t % 9 === 4) add('dirty', ago - 0.6, { notes: d === 0 ? 'Mucus' : '' });
     }
     add('bottle', d * 24 + 9.5, { amountMl: 60, formulaMl: 30 });
-    add('pump', d * 24 + 13, { amountMl: 40 + (d % 3) * 10 });
+    add('pump', d * 24 + 13, { amountMl: Math.max(20, 62 - d * 2) + (d % 3) * 6 });
     add('sleep', d * 24 + 4, { durationMin: 150 });
     add('play', d * 24 + 11, { durationMin: 25 });
   }

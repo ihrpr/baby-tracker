@@ -364,6 +364,16 @@ details.platform[open] summary::after { transform: rotate(225deg); }
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: -6px 0 10px; flex-wrap: wrap; }
 .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; }
 .cols { display: flex; gap: 8px; align-items: flex-end; border-bottom: 1px solid var(--line); height: 138px; }
+.chart-wrap { position: relative; }
+.chart-wrap .trend {
+  position: absolute; left: 0; right: 0; bottom: 1px;
+  width: 100%; height: 108px; pointer-events: none;
+}
+.chart-wrap .trend line {
+  stroke: var(--ink); stroke-opacity: .55; stroke-width: 2;
+  stroke-dasharray: 5 4; vector-effect: non-scaling-stroke;
+}
+.trend-note { font-size: 12px; color: var(--muted); margin: -8px 0 10px; font-variant-numeric: tabular-nums; }
 .cols.dense, .days.dense { gap: 2px; }
 .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
 .col-bar { width: 100%; max-width: 22px; }
@@ -382,7 +392,7 @@ details.platform[open] summary::after { transform: rotate(225deg); }
 }
 .stat-table th { text-align: right; font-weight: 600; color: var(--muted); padding: 8px 6px; border-bottom: 1px solid var(--line); }
 .stat-table td { text-align: right; padding: 7px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-.stat-table th:first-child, .stat-table td:first-child { text-align: left; padding-left: 12px; }
+.stat-table th:first-child, .stat-table td:first-child { text-align: left; padding-left: 12px; white-space: nowrap; }
 .stat-table th:last-child, .stat-table td:last-child { padding-right: 12px; }
 .stat-table tr:last-child td { border-bottom: none; }
 
