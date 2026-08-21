@@ -14,7 +14,9 @@ const SCOPES = [
 ].join(' ');
 
 export function isConfigured() {
-  return Boolean(GOOGLE_CLIENT_ID && GOOGLE_API_KEY);
+  // un-replaced __…__ placeholders mean the deploy workflow didn't inject values
+  return Boolean(GOOGLE_CLIENT_ID && GOOGLE_API_KEY &&
+    !GOOGLE_CLIENT_ID.startsWith('__') && !GOOGLE_API_KEY.startsWith('__'));
 }
 
 /** Thrown when a call needs the user to go through interactive sign-in. */
