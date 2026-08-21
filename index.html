@@ -51,7 +51,11 @@
         <span class="icn t-pump">🔒</span>
         <div><b>Yours alone</b><span>Data lives in a Google Sheet in your Drive</span></div>
       </div>
+      <p id="iabWarn" class="warn" hidden>It looks like this page is open inside
+        another app, where Google blocks sign-in. Open it in Safari or Chrome
+        instead.</p>
       <button id="signinBtn" class="primary">Sign in with Google</button>
+      <p id="signinStatus" class="status"></p>
     </div>
 
     <h2>Use it like an app</h2>
@@ -74,8 +78,6 @@
         <li>Choose <b>Add to Home screen</b></li>
       </ol>
     </details>
-
-    <p id="signinStatus" class="status"></p>
   </section>
 
   <!-- Choose / create the data spreadsheet -->
@@ -122,12 +124,15 @@
       <button id="tabStats" class="tab">Stats</button>
     </div>
 
+    <p id="appStatus" class="status"></p>
+
     <div id="logView">
       <div class="col-a">
       <div id="openList"></div>
 
       <div class="card">
         <div class="type-grid" id="typeGrid"></div>
+        <div class="side-hint" id="sideHint" hidden></div>
         <div class="seg" id="sideSeg" hidden>
           <button data-side="L">Left</button>
           <button data-side="R">Right</button>
@@ -172,24 +177,27 @@
         <h3>Milk per day (ml)</h3>
         <div class="legend">
           <span><i style="background:var(--s1)"></i>Breastfed (≈)</span>
-          <span><i style="background:var(--s2)"></i>Pumped milk</span>
+          <span><i style="background:var(--s2)"></i>Bottle milk</span>
           <span><i style="background:var(--s3)"></i>Formula</span>
         </div>
         <div id="milkChart"></div>
+        <div class="chart-note" id="milkCap" hidden></div>
       </div>
       <div class="card">
         <h3>Pumped per day (ml)</h3>
         <div class="trend-note" id="pumpTrend"></div>
         <div id="pumpChart"></div>
+        <div class="chart-note" id="pumpCap" hidden></div>
       </div>
       <h2>Daily intake (ml)</h2>
       <table class="stat-table" id="statTable"></table>
+      <p class="muted table-note">“Feeds” counts breastfeeds and bottles.
+        “Bottle milk” is pumped milk given by bottle; “Pumped” is the amount
+        pumped that day. Tap a chart bar for its details.</p>
     </div>
 
-    <p id="appStatus" class="status"></p>
-
     <div class="footer-actions">
-      <button id="refreshBtn" class="secondary">Refresh</button>
+      <button id="refreshBtn" class="linkish">Refresh</button>
       <button id="switchBtn" class="linkish">Switch sheet</button>
       <button id="signoutBtn" class="linkish">Sign out</button>
     </div>
@@ -243,6 +251,12 @@
         <button id="sSave" class="save">Save</button>
       </div>
     </div>
+  </div>
+
+  <!-- Feedback toast (logged ✓ / undo / errors) -->
+  <div id="toast" class="toast" hidden>
+    <span id="toastMsg"></span>
+    <button id="toastUndo" hidden>Undo</button>
   </div>
 
 </main>

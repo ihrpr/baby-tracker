@@ -156,12 +156,14 @@ async function resolveRow(spreadsheetId, id, hintRow) {
 /**
  * p: {type, startMs?, durationMin?, side?, amountMl?, formulaMl?, notes?}
  * No startMs → starts now. durationMin given → closed event.
+ * Returns the new event's id (so the UI can offer undo).
  */
 export async function addEvent(spreadsheetId, p, userEmail) {
   const startMs = Number.isFinite(p.startMs) ? p.startMs : Date.now();
   const hasDur = Number.isFinite(p.durationMin);
+  const id = uuid();
   const row = [
-    uuid(),
+    id,
     p.type,
     msToSerial(startMs),
     hasDur ? msToSerial(startMs + p.durationMin * 60000) : '',
@@ -176,6 +178,7 @@ export async function addEvent(spreadsheetId, p, userEmail) {
     `${API}/${spreadsheetId}/values/${encodeURIComponent('Log!A2:J')}:append` +
     '?valueInputOption=RAW&insertDataOption=INSERT_ROWS',
     { method: 'POST', body: JSON.stringify({ values: [row] }) });
+  return id;
 }
 
 export async function stopEvent(spreadsheetId, ev, endMs) {

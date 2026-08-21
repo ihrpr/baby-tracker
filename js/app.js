@@ -47,6 +47,27 @@ const numVal = (el) => {
   return v === '' ? null : Number(v);
 };
 
+// ---------- toast (confirmation / undo / errors) ----------
+
+let toastTimer = null;
+
+function hideToast() {
+  $('toast').hidden = true;
+  clearTimeout(toastTimer);
+}
+
+function showToast(msg, undoFn = null, isError = false) {
+  const t = $('toast');
+  $('toastMsg').textContent = msg;
+  t.classList.toggle('error', isError);
+  const u = $('toastUndo');
+  u.hidden = !undoFn;
+  u.onclick = undoFn ? () => { hideToast(); undoFn(); } : null;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, isError ? 6000 : 5000);
+}
+
 // ---------- demo mode: open index.html?demo for a design preview ----------
 
 const DEMO = new URLSearchParams(location.search).has('demo');
@@ -98,6 +119,11 @@ async function boot() {
     return;
   }
   if (!g.isConfigured()) { show('view-config'); return; }
+  // Google blocks OAuth in in-app browsers (Instagram, Gmail, …) with a
+  // cryptic error — warn before the user even taps the button
+  if (/FBAN|FBAV|Instagram|Line\/|GSA\/|; wv\)/.test(navigator.userAgent)) {
+    $('iabWarn').hidden = false;
+  }
   show('view-signin');
   setStatus('signinStatus', 'Checking sign-in…');
   const token = await g.signInSilent();
@@ -165,6 +191,9 @@ function connectSheet(id) {
 
 // ---------- data ----------
 
+let lastFetch = 0;
+let saving = false;
+
 async function loadData() {
   if (DEMO) { render(); return; }
   $('sheetLink').href = store.sheetUrl(sheetId);
@@ -173,32 +202,57 @@ async function loadData() {
     const state = await store.fetchState(sheetId);
     events = state.events;
     settings = state.settings;
-    setStatus('appStatus', events.length ? '' : 'Nothing logged yet — add the first entry above.');
+    lastFetch = Date.now();
+    setStatus('appStatus', '');
     render();
-    if (!tick) tick = setInterval(render, 30000); // keep timers and "ago" fresh
+    if (!tick) {
+      // keep timers fresh, and quietly pick up the partner's entries
+      tick = setInterval(() => { render(); maybeRefresh(90000); }, 30000);
+    }
   } catch (err) {
     if (err instanceof g.NeedsSignIn) { show('view-signin'); return; }
-    setStatus('appStatus', 'Failed to load: ' + err.message, true);
+    setStatus('appStatus', navigator.onLine === false
+      ? 'You’re offline — entries can’t load or save until you reconnect.'
+      : 'Failed to load: ' + err.message, true);
   }
 }
 
-/** Run a write, then refetch. Errors surface as alerts, state stays intact. */
-async function busy(fn) {
-  if (DEMO) { alert('Demo mode — changes are not saved.'); return false; }
-  setStatus('appStatus', 'Saving…');
+/** Refetch when the data may be stale (app re-opened, partner logging). */
+function maybeRefresh(maxAgeMs = 15000) {
+  if (DEMO || !sheetId || $('view-app').hidden || saving) return;
+  if (document.visibilityState !== 'visible') return;
+  if (Date.now() - lastFetch > maxAgeMs) loadData();
+}
+document.addEventListener('visibilitychange', () => maybeRefresh());
+window.addEventListener('focus', () => maybeRefresh());
+
+/**
+ * Run a write, then refetch. The triggering button (if given) is disabled
+ * and shows "Saving…" so a slow network can't collect double-taps; errors
+ * surface in the toast, state stays intact.
+ */
+async function busy(fn, btn = null) {
+  if (DEMO) { showToast('Demo mode — changes are not saved.'); return false; }
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  saving = true;
   try {
     await fn();
     await loadData();
     return true;
   } catch (err) {
     if (err instanceof g.NeedsSignIn) { show('view-signin'); return false; }
-    setStatus('appStatus', '');
-    alert(err.message || err);
+    showToast(navigator.onLine === false
+      ? 'You’re offline — this wasn’t saved. Try again when connected.'
+      : 'Could not save: ' + (err.message || err), null, true);
     return false;
+  } finally {
+    saving = false;
+    if (btn) { btn.disabled = false; btn.textContent = label; }
   }
 }
 
-$('refreshBtn').onclick = loadData;
+$('refreshBtn').onclick = () => loadData();
 
 $('switchBtn').onclick = () => {
   localStorage.removeItem(SHEET_KEY);
@@ -263,26 +317,44 @@ function buildTypeGrid() {
 }
 buildTypeGrid();
 
-function segSetup(segEl) {
+function segSetup(segEl, onPick = null) {
   segEl.querySelectorAll('button').forEach((b) => {
     b.onclick = () => {
       const on = b.classList.contains('on');
       segEl.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
       if (!on) b.classList.add('on');
+      if (onPick) onPick();
     };
   });
 }
 const segValue = (segEl) => segEl.querySelector('button.on')?.dataset.side || '';
 const segSet = (segEl, v) =>
   segEl.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.side === v));
-segSetup($('sideSeg'));
+let sideTouched = false; // user picked/cleared a side — stop suggesting
+segSetup($('sideSeg'), () => { sideTouched = true; });
 segSetup($('mSideSeg'));
+
+const sideName = (s) => (s === 'L' ? 'left' : s === 'R' ? 'right' : 'both sides');
+
+/** Suggest the side opposite to the last recorded one. */
+function syncSideHint() {
+  const hint = $('sideHint');
+  if (curType !== 'feed') { hint.hidden = true; return; }
+  hint.hidden = false;
+  const last = events.find((e) => e.type === 'feed' && e.side);
+  if (!last) { hint.textContent = 'Which side?'; return; }
+  const suggest = last.side === 'L' ? 'R' : last.side === 'R' ? 'L' : '';
+  hint.textContent = `Last time: ${sideName(last.side)} · ${agoDur(last.startMs)}` +
+    (suggest ? ` — try ${sideName(suggest)}` : '');
+  if (suggest && !sideTouched && !segValue($('sideSeg'))) segSet($('sideSeg'), suggest);
+}
 
 function syncForm() {
   const type = curType;
   const t = TYPES[type];
   const earlier = $('earlier').checked;
   $('sideSeg').hidden = type !== 'feed';
+  syncSideHint();
   $('bottleExtras').hidden = type !== 'bottle';
   $('amountWrap').hidden = type !== 'pump';
   $('earlierFields').hidden = !earlier;
@@ -307,21 +379,33 @@ $('goBtn').onclick = async () => {
   if (type === 'pump') p.amountMl = numVal($('amount'));
   if (earlier) {
     const startMs = fromLocalInput($('startInput').value);
-    if (startMs == null) { alert('Please pick when it happened.'); return; }
+    if (startMs == null) { showToast('Please pick when it happened.', null, true); return; }
     p.startMs = startMs;
     const dur = numVal($('durInput'));
     if (t.timed && (dur == null || !(dur > 0))) {
-      alert('Please enter the duration in minutes.'); return;
+      showToast('Please enter the duration in minutes.', null, true); return;
     }
     if (dur != null) p.durationMin = dur;
   } else if (t.timed && events.some((e) => e.type === type && !e.endMs)) {
     if (!confirm(`A ${t.label.toLowerCase()} is already running. Start another?`)) return;
   }
-  if (await busy(() => store.addEvent(sheetId, p, userEmail))) resetForm();
+  let newId = '';
+  const ok = await busy(async () => {
+    newId = await store.addEvent(sheetId, p, userEmail);
+  }, $('goBtn'));
+  if (ok) {
+    resetForm();
+    const undo = async () => {
+      const e = events.find((x) => x.id === newId);
+      if (e && await busy(() => store.deleteEvent(sheetId, e))) showToast('Entry removed.');
+    };
+    showToast(`${t.label} ${!earlier && t.timed ? 'started' : 'logged'} ✓`, undo);
+  }
 };
 
 function resetForm() {
   segSet($('sideSeg'), '');
+  sideTouched = false;
   ['bottleBm', 'bottleF', 'amount', 'notes', 'startInput', 'durInput']
     .forEach((id) => { $(id).value = ''; });
   $('earlier').checked = false;
@@ -350,21 +434,30 @@ function render() {
   if (!$('statsView').hidden) renderStats(events, settings, statsRange);
 }
 
+// a running timer this old was probably just forgotten — nudge to fix it
+const STALE_MIN = { feed: 120, play: 180, sleep: 840 };
+
 function renderOpen(open, now) {
   const box = $('openList');
   box.innerHTML = '';
   open.forEach((e) => {
     const t = TYPES[e.type] || { label: e.type, emoji: '❓' };
+    const min = elapsedMin(e, now);
+    const stale = min > (STALE_MIN[e.type] || 180);
+    const sub = stale
+      ? `<span class="stale">running ${fmtMin(min)} — forgot to stop? Tap to fix</span>`
+      : `<span class="live-dot"></span>${fmtTime(e.startMs)} · tap to edit`;
     const card = document.createElement('div');
-    card.className = 'open-card';
+    card.className = 'open-card' + (stale ? ' is-stale' : '');
     card.innerHTML = `<span class="icn t-${e.type}">${t.emoji}</span>` +
       `<div class="grow"><div class="t-label">${t.label}${e.side ? ' · ' + e.side : ''}</div>` +
-      `<div class="t-sub"><span class="live-dot"></span>started ${fmtTime(e.startMs)}</div></div>` +
-      `<div class="t-elapsed">${fmtMin(elapsedMin(e, now))}</div>`;
+      `<div class="t-sub">${sub}</div></div>` +
+      `<div class="t-elapsed">${fmtMin(min)}</div>`;
+    card.onclick = () => openEdit(e); // edit or discard an accidental start
     const btn = document.createElement('button');
     btn.className = 'stop-btn';
     btn.textContent = 'Stop';
-    btn.onclick = () => busy(() => store.stopEvent(sheetId, e, Date.now()));
+    btn.onclick = (ev) => { ev.stopPropagation(); busy(() => store.stopEvent(sheetId, e, Date.now()), btn); };
     card.appendChild(btn);
     box.appendChild(card);
   });
@@ -399,6 +492,14 @@ function renderSummary(now) {
 
   const assumedMl = Number(settings.breastfeed_ml) || 60;
   const en = enabledTypes();
+
+  if (!events.length) {
+    $('summary').innerHTML = '<div class="empty-note">Nothing here yet. ' +
+      'Pick an activity above and tap the green button — your day builds up here, ' +
+      'and every entry can be edited later by tapping it in the list.</div>';
+    return;
+  }
+
   const feeds = todayOf('feed');
   const bottles = todayOf('bottle');
 
@@ -427,7 +528,7 @@ function renderSummary(now) {
   const totalMl = bmMl + formulaMl + breastfedMl;
   pushRow('🍽️', 'Milk today', '', [totalMl ? `≈${totalMl}ml` : '']);
   if (feeds.length) pushSub('Breastfed', `${feeds.length}× · ≈${breastfedMl}ml`);
-  if (bmMl) pushSub('Pumped milk', `${bmMl}ml`);
+  if (bmMl) pushSub('Bottle milk', `${bmMl}ml`);
   if (formulaMl) pushSub('Formula', `${formulaMl}ml`);
 
   const sleeps = todayOf('sleep');
@@ -447,7 +548,7 @@ function renderSummary(now) {
     const lastPlay = allOf('play')[0];
     const playMin = plays.reduce((a, e) => a + overlapMin(e, dayStartMs, now), 0);
     pushRow('🧸', 'Play',
-      lastPlay ? (!lastPlay.endMs ? 'playing now' : 'last ' + agoDur(lastPlay.startMs, now)) : '',
+      lastPlay ? (!lastPlay.endMs ? 'playing now' : agoDur(lastPlay.startMs, now)) : '',
       [playMin ? fmtMin(playMin) : '']);
   }
 
@@ -456,7 +557,7 @@ function renderSummary(now) {
     const lastPump = allOf('pump')[0];
     const pumpMl = pumps.reduce((a, e) => a + (e.amountMl || 0), 0);
     pushRow('🥛', 'Pumped',
-      lastPump ? 'last ' + agoDur(lastPump.startMs, now) : '',
+      lastPump ? agoDur(lastPump.startMs, now) : '',
       [pumps.length ? `${pumps.length}×` : '', pumpMl ? `${pumpMl}ml` : '']);
   }
 
@@ -465,7 +566,7 @@ function renderSummary(now) {
   if (en.has('wet') || en.has('dirty') || wet || dirty) {
     const lastNappy = events.find((e) => e.type === 'wet' || e.type === 'dirty');
     pushRow('💧💩', 'Nappies',
-      lastNappy ? 'last ' + agoDur(lastNappy.startMs, now) : '',
+      lastNappy ? agoDur(lastNappy.startMs, now) : '',
       [(wet || dirty) ? `${wet} wet · ${dirty} dirty` : '']);
   }
 
@@ -510,13 +611,13 @@ $('settingsOverlay').onclick = (ev) => {
 
 $('sSave').onclick = async () => {
   const n = Number($('sBfMl').value);
-  if (!(n > 0)) { alert('Please enter the nursing amount in ml.'); return; }
-  if (!sSelected.size) { alert('Keep at least one activity visible.'); return; }
+  if (!(n > 0)) { showToast('Please enter the nursing amount in ml.', null, true); return; }
+  if (!sSelected.size) { showToast('Keep at least one activity visible.', null, true); return; }
   const list = ALL_TYPES.filter((k) => sSelected.has(k)).join(',');
   const ok = await busy(async () => {
     await store.setSetting(sheetId, 'breastfeed_ml', n);
     await store.setSetting(sheetId, 'enabled_types', list);
-  });
+  }, $('sSave'));
   if (ok) $('settingsOverlay').hidden = true;
 };
 
@@ -524,8 +625,8 @@ function eventDetails(e) {
   const parts = [];
   if (e.side) parts.push(e.side === 'both' ? 'both sides' : (e.side === 'L' ? 'left' : e.side === 'R' ? 'right' : e.side));
   if (e.type === 'bottle') {
-    if (e.amountMl) parts.push(`${e.amountMl}ml b`);
-    if (e.formulaMl) parts.push(`${e.formulaMl}ml f`);
+    if (e.amountMl) parts.push(`${e.amountMl}ml milk`);
+    if (e.formulaMl) parts.push(`${e.formulaMl}ml formula`);
   } else if (e.amountMl) {
     parts.push(`${e.amountMl}ml`);
   }
@@ -556,7 +657,8 @@ function renderList(recent, now) {
     item.innerHTML = `<span class="icn t-${e.type}">${t.emoji}</span>` +
       `<div class="grow"><div class="e-label">${t.label}</div>` +
       `<div class="e-sub">${eventDetails(e)}</div></div>` +
-      `<div class="e-time"><b>${fmtTime(e.startMs)}</b>${dur}</div>`;
+      `<div class="e-time"><b>${fmtTime(e.startMs)}</b>${dur}</div>` +
+      '<span class="chev" aria-hidden="true">›</span>';
     item.onclick = () => openEdit(e);
     box.appendChild(item);
   }
@@ -597,7 +699,7 @@ $('mSave').onclick = async () => {
   const type = $('mType').value;
   const t = TYPES[type] || { timed: false };
   const startMs = fromLocalInput($('mStart').value);
-  if (startMs == null) { alert('Please set a valid start time.'); return; }
+  if (startMs == null) { showToast('Please set a valid start time.', null, true); return; }
   const dur = numVal($('mDur'));
   const p = {
     id: editing.id, row: editing.row, type, startMs,
@@ -618,14 +720,14 @@ $('mSave').onclick = async () => {
     p.amountMl = editing.amountMl; // e.g. legacy feed amounts
     p.formulaMl = editing.formulaMl;
   }
-  const ok = await busy(() => store.updateEvent(sheetId, p));
+  const ok = await busy(() => store.updateEvent(sheetId, p), $('mSave'));
   if (ok) closeModal();
 };
 
 $('mDelete').onclick = async () => {
   if (!editing || !confirm('Delete this entry?')) return;
-  const ok = await busy(() => store.deleteEvent(sheetId, editing));
-  if (ok) closeModal();
+  const ok = await busy(() => store.deleteEvent(sheetId, editing), $('mDelete'));
+  if (ok) { closeModal(); showToast('Entry deleted.'); }
 };
 
 // ---------- PWA ----------
