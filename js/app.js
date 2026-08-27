@@ -124,6 +124,9 @@ async function boot() {
   if (/FBAN|FBAV|Instagram|Line\/|GSA\/|; wv\)/.test(navigator.userAgent)) {
     $('iabWarn').hidden = false;
   }
+  // a stored token from the last hour skips sign-in entirely — crucial on
+  // iOS, which kills the PWA in the background and blocks silent renewal
+  if (g.hasValidToken()) { afterSignIn(); return; }
   show('view-signin');
   setStatus('signinStatus', 'Checking sign-in…');
   const token = await g.signInSilent();
@@ -204,16 +207,53 @@ async function loadData() {
     settings = state.settings;
     lastFetch = Date.now();
     setStatus('appStatus', '');
+    showReauth(false);
     render();
     if (!tick) {
-      // keep timers fresh, and quietly pick up the partner's entries
-      tick = setInterval(() => { render(); maybeRefresh(90000); }, 30000);
+      // keep timers fresh, the token renewed, and the partner's entries in
+      tick = setInterval(() => { render(); keepTokenFresh(); maybeRefresh(90000); }, 30000);
     }
   } catch (err) {
-    if (err instanceof g.NeedsSignIn) { show('view-signin'); return; }
+    if (err instanceof g.NeedsSignIn) {
+      // never bounce an in-use app to the sign-in page — keep the data on
+      // screen and offer a one-tap reconnect instead
+      if (events.length) { showReauth(true); return; }
+      show('view-signin'); return;
+    }
     setStatus('appStatus', navigator.onLine === false
       ? 'You’re offline — entries can’t load or save until you reconnect.'
       : 'Failed to load: ' + err.message, true);
+  }
+}
+
+// ---------- session keep-alive / reconnect ----------
+
+function showReauth(v) { $('reauthBar').hidden = !v; }
+
+$('reauthBtn').onclick = async () => {
+  try {
+    await g.signIn(); // direct tap → popup allowed
+    showReauth(false);
+    loadData();
+  } catch (err) {
+    showToast('Sign-in failed: ' + err.message, null, true);
+  }
+};
+
+let lastTokenCheck = 0;
+
+/** Silently renew the token before it expires; if that's not possible,
+ *  surface the reconnect bar instead of failing later. */
+async function keepTokenFresh() {
+  if (DEMO || document.visibilityState !== 'visible' || $('view-app').hidden) return;
+  if (Date.now() - lastTokenCheck < 3 * 60000) return;
+  lastTokenCheck = Date.now();
+  const ok = await g.ensureFreshToken();
+  if (ok) {
+    // token came back (e.g. signed into Google in another tab) — recover
+    if (!$('reauthBar').hidden) { showReauth(false); loadData(); }
+  } else if (events.length) {
+    showReauth(true);
   }
 }
 
@@ -241,7 +281,12 @@ async function busy(fn, btn = null) {
     await loadData();
     return true;
   } catch (err) {
-    if (err instanceof g.NeedsSignIn) { show('view-signin'); return false; }
+    if (err instanceof g.NeedsSignIn) {
+      // keep the form as typed; one tap on the bar, then save again
+      showReauth(true);
+      showToast('Your Google session expired — sign back in above, then try again.', null, true);
+      return false;
+    }
     showToast(navigator.onLine === false
       ? 'You’re offline — this wasn’t saved. Try again when connected.'
       : 'Could not save: ' + (err.message || err), null, true);

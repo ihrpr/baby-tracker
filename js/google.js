@@ -36,8 +36,45 @@ function loadScript(src) {
   });
 }
 
+const TOKEN_KEY = 'bt.token';
+
+function loadStoredToken() {
+  try {
+    const t = JSON.parse(localStorage.getItem(TOKEN_KEY));
+    if (t && t.accessToken && Date.now() < t.expiresAt) return t;
+  } catch { /* absent or corrupt */ }
+  return null;
+}
+
 let tokenClient = null;
-let token = null; // { accessToken, expiresAt }
+// { accessToken, expiresAt } — persisted so reopening the app within the
+// token's ~1h lifetime doesn't ask for sign-in again (iOS kills the PWA
+// in the background, which would otherwise lose the token every time)
+let token = loadStoredToken();
+
+function setToken(t) {
+  token = t;
+  try {
+    if (t) localStorage.setItem(TOKEN_KEY, JSON.stringify(t));
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch { /* private browsing — in-memory only */ }
+}
+
+/** A usable token exists right now (no network / GIS needed). */
+export function hasValidToken() {
+  return Boolean(token && Date.now() < token.expiresAt);
+}
+
+/**
+ * Keep the token fresh without user interaction: renews silently when
+ * less than minLeftMs remains. Returns false if interaction is needed.
+ */
+export async function ensureFreshToken(minLeftMs = 5 * 60000) {
+  if (token && Date.now() > token.expiresAt - minLeftMs) {
+    return Boolean(await signInSilent());
+  }
+  return hasValidToken() || Boolean(await signInSilent());
+}
 
 async function ensureGis() {
   await loadScript('https://accounts.google.com/gsi/client');
@@ -54,11 +91,11 @@ function requestToken(prompt) {
   return new Promise((resolve, reject) => {
     tokenClient.callback = (resp) => {
       if (resp.error) { reject(new Error(resp.error)); return; }
-      token = {
+      setToken({
         accessToken: resp.access_token,
         // refresh a minute before Google expires it
         expiresAt: Date.now() + (Number(resp.expires_in) - 60) * 1000,
-      };
+      });
       resolve(token.accessToken);
     };
     tokenClient.error_callback = (err) =>
@@ -85,7 +122,7 @@ export async function signIn() {
 
 export function signOut() {
   if (token) google.accounts.oauth2.revoke(token.accessToken, () => {});
-  token = null;
+  setToken(null);
 }
 
 async function ensureToken() {
@@ -120,7 +157,7 @@ export async function apiFetch(url, options = {}, isRetry = false) {
     },
   });
   if (resp.status === 401 && !isRetry) {
-    token = null;
+    setToken(null);
     return apiFetch(url, options, true);
   }
   if (!resp.ok) {

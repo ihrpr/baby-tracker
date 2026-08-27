@@ -209,6 +209,15 @@ label.toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
 
 .side-hint { font-size: 12.5px; color: var(--muted); margin: 12px 2px 0; }
 
+.reauth { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.reauth span { flex: 1; }
+.reauth button {
+  flex: none;
+  background: var(--accent); color: var(--on-accent);
+  font-weight: 600; font-size: 13.5px;
+  padding: 8px 14px; border-radius: 999px;
+}
+
 .empty-note { color: var(--muted); font-size: 14px; line-height: 1.55; padding: 6px 2px; }
 
 /* feedback toast — fixed above everything, incl. the modal overlays */
