@@ -3,268 +3,90 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f5f1" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#191816" media="(prefers-color-scheme: dark)">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Baby Tracker">
-  <title>Baby Tracker</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="icon" href="icons/favicon-64.png" sizes="64x64">
-  <link rel="stylesheet" href="css/styles.css">
-  <script type="module" src="js/app.js"></script>
+  <meta name="theme-color" content="#f5f4ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#171a15" media="(prefers-color-scheme: dark)">
+  <title>We’ve moved — tinyloops</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%233f7a4e'/%3E%3Cpath d='M8 30.5C18 30.5 28.5 28 29.8 20.4 30.6 14.5 22.2 13.3 21.4 19.2 20.6 25.5 29.4 28.4 40 25.4' fill='none' stroke='%23f3f1e2' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #f5f4ec; --card: #fffefa; --ink: #232a20; --muted: #79806e;
+      --line: #e3e2d4; --accent: #3f7a4e; --accent-strong: #35693f; --on-accent: #f2f7ee;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171a15; --card: #21261e; --ink: #e9e8de; --muted: #9aa08d;
+        --line: #363c30; --accent: #8ab992; --accent-strong: #9ac6a2; --on-accent: #14180f;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: ui-rounded, -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      background-image: radial-gradient(700px 360px at 50% -120px, rgba(63, 122, 78, .12), transparent);
+      background-repeat: no-repeat;
+      color: var(--ink);
+      min-height: 100svh;
+      display: grid; place-items: center;
+      padding: 24px 16px;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .card {
+      max-width: 400px; width: 100%;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 2px 4px rgba(50, 60, 40, .08), 0 8px 22px rgba(50, 60, 40, .09);
+      padding: 34px 26px 28px;
+    }
+    .mark {
+      width: 84px; height: 84px; border-radius: 24px;
+      background: linear-gradient(160deg, #478551, #35693f);
+      display: grid; place-items: center;
+      margin: 0 auto 18px;
+      box-shadow: 0 6px 18px rgba(50, 60, 40, .18);
+    }
+    h1 { font-size: 24px; letter-spacing: -.02em; margin-bottom: 6px; }
+    .name { color: var(--accent); }
+    p { color: var(--muted); font-size: 14.5px; margin: 10px 0 0; }
+    p b { color: var(--ink); font-weight: 650; }
+    .go {
+      display: block; margin: 22px 0 8px;
+      background: linear-gradient(var(--accent), var(--accent-strong));
+      color: var(--on-accent); text-decoration: none;
+      font-weight: 700; font-size: 16px;
+      padding: 15px; border-radius: 999px;
+    }
+    .url { font-size: 13px; color: var(--muted); }
+    .steps {
+      margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line);
+      text-align: left; font-size: 13.5px; color: var(--muted);
+    }
+    .steps b { color: var(--ink); font-weight: 650; }
+    .steps li { margin: 8px 0 0 18px; }
+  </style>
 </head>
 <body>
-
-<main class="wrap">
-
-  <!-- Shown until js/config.js is filled in -->
-  <section id="view-config" hidden>
-    <h1>👶 Baby Tracker</h1>
-    <div class="card">
-      <p>This copy of the app isn't configured yet.</p>
-      <p class="muted">The Google client ID and API key are missing from
-        <code>js/config.js</code> — see the README for setup steps.</p>
+  <main class="card">
+    <div class="mark" aria-hidden="true">
+      <svg width="54" height="54" viewBox="0 0 48 48" fill="none">
+        <path d="M5 31 C 17 31 30 28 31.5 19 C 32.5 12 22.5 10.5 21.5 17.5 C 20.5 25 31 28.5 43 25"
+          stroke="#f3f1e2" stroke-width="4.4" stroke-linecap="round"/>
+      </svg>
     </div>
-  </section>
-
-  <!-- Sign in -->
-  <section id="view-signin" hidden>
-    <div class="hero">
-      <img class="hero-logo" src="icons/icon-192.png" alt="">
-      <h1>Baby Tracker</h1>
-      <p class="tagline">Feeds, sleep and nappies — logged in seconds,
-        together with your partner.</p>
-    </div>
-
-    <div class="card">
-      <div class="feature">
-        <span class="icn t-feed">🤱</span>
-        <div><b>One-tap logging</b><span>Live timers for feeds, sleep and play</span></div>
-      </div>
-      <div class="feature">
-        <span class="icn t-bottle">📈</span>
-        <div><b>Summary &amp; stats</b><span>Milk intake, last feed, nappies at a glance</span></div>
-      </div>
-      <div class="feature">
-        <span class="icn t-pump">🔒</span>
-        <div><b>Yours alone</b><span>Data lives in a Google Sheet in your Drive</span></div>
-      </div>
-      <p id="iabWarn" class="warn" hidden>It looks like this page is open inside
-        another app, where Google blocks sign-in. Open it in Safari or Chrome
-        instead.</p>
-      <button id="signinBtn" class="primary">Sign in with Google</button>
-      <p id="signinStatus" class="status"></p>
-    </div>
-
-    <h2>Use it like an app</h2>
-    <details class="card platform">
-      <summary>🍎 On iPhone</summary>
-      <ol class="steps">
-        <li>Open this page in your <b>browser</b></li>
-        <li>Tap <b>Share</b>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"
-            stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </li>
-        <li>Choose <b>Add to Home Screen</b></li>
+    <h1>Baby Tracker is now <span class="name">tinyloops</span></h1>
+    <p>Same tracker, new home — faster, easier sign-in, and your data still
+      lives in <b>your own Google Sheet</b>.</p>
+    <a class="go" href="https://tinyloops.app">Open tinyloops</a>
+    <div class="url">tinyloops.app</div>
+    <div class="steps">
+      <b>Moving takes a minute:</b>
+      <ol>
+        <li>Open <b>tinyloops.app</b> and sign in with the same Google account</li>
+        <li>Choose <b>“Open an existing tracker sheet”</b> and pick your sheet —
+          every entry is already there</li>
+        <li>Add it to your home screen, and remove this old icon</li>
       </ol>
-    </details>
-    <details class="card platform">
-      <summary>🤖 On Android</summary>
-      <ol class="steps">
-        <li>Open this page in your <b>browser</b></li>
-        <li>Tap the <b>⋮</b> menu</li>
-        <li>Choose <b>Add to Home screen</b></li>
-      </ol>
-    </details>
-  </section>
-
-  <!-- Choose / create the data spreadsheet -->
-  <section id="view-connect" hidden>
-    <h1>👶 Baby Tracker</h1>
-    <div class="card">
-      <h2>Set up your tracker</h2>
-      <p>Your data lives in a Google Sheet. Create a new one, or open one
-        that was shared with you.</p>
-      <button id="createBtn" class="primary">Create a new tracker sheet</button>
-      <p class="muted">We'll create an empty spreadsheet called “Baby Tracker”
-        in your Google Drive. You can open, export or delete it at any time.</p>
-      <button id="pickBtn" class="secondary">Open an existing tracker sheet</button>
-      <p class="muted">Already tracking, or joining a partner? If a tracker
-        sheet was shared with you, pick it here to connect this device.</p>
     </div>
-    <div class="card">
-      <h2>Sharing with a partner</h2>
-      <p class="muted">Both steps are needed: 1) share the sheet with them as
-        Editor from Google Sheets; 2) they sign in here and use “Open an
-        existing tracker sheet” to pick it.</p>
-    </div>
-    <p id="connectStatus" class="status"></p>
-  </section>
-
-  <!-- The tracker -->
-  <section id="view-app" hidden>
-    <div class="topbar">
-      <div class="brand">
-        <img class="logo" src="icons/icon-192.png" alt="">
-        <div>
-          <h1>Baby Tracker</h1>
-          <div class="brand-sub" id="topDate"></div>
-        </div>
-      </div>
-      <div class="top-actions">
-        <a id="sheetLink" class="sheet-link" target="_blank" rel="noopener">📊 Data</a>
-        <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙️</button>
-      </div>
-    </div>
-
-    <div id="reauthBar" class="warn reauth" hidden>
-      <span>Google sign-in expired — new entries can't load or save.</span>
-      <button id="reauthBtn">Sign back in</button>
-    </div>
-
-    <div class="tabs">
-      <button id="tabLog" class="tab on">Log</button>
-      <button id="tabStats" class="tab">Stats</button>
-    </div>
-
-    <p id="appStatus" class="status"></p>
-
-    <div id="logView">
-      <div class="col-a">
-      <div id="openList"></div>
-
-      <div class="card">
-        <div class="type-grid" id="typeGrid"></div>
-        <div class="side-hint" id="sideHint" hidden></div>
-        <div class="seg" id="sideSeg" hidden>
-          <button data-side="L">Left</button>
-          <button data-side="R">Right</button>
-          <button data-side="both">Both</button>
-        </div>
-        <div id="bottleExtras" hidden>
-          <label class="f">Breast milk (ml)
-            <input id="bottleBm" type="number" inputmode="numeric" min="0"></label>
-          <label class="f">Formula (ml)
-            <input id="bottleF" type="number" inputmode="numeric" min="0"></label>
-        </div>
-        <label class="f" id="amountWrap" hidden>Amount pumped (ml)
-          <input id="amount" type="number" inputmode="numeric" min="0"></label>
-        <label class="toggle"><input id="earlier" type="checkbox"> Happened earlier</label>
-        <div id="earlierFields" hidden>
-          <label class="f">When it started
-            <input id="startInput" type="datetime-local"></label>
-          <label class="f" id="durWrap">Duration (minutes)
-            <input id="durInput" type="number" inputmode="numeric" min="1"></label>
-        </div>
-        <input id="notes" type="text" placeholder="Notes (optional)">
-        <button id="goBtn" class="primary"></button>
-      </div>
-
-      <h2>Day summary</h2>
-      <div class="card" id="summary"></div>
-      </div>
-
-      <div class="col-b">
-      <h2>Today &amp; yesterday</h2>
-      <div id="todayList"></div>
-      </div>
-    </div>
-
-    <div id="statsView" hidden>
-      <div class="seg range" id="rangeSeg">
-        <button data-r="7">7 days</button>
-        <button data-r="14" class="on">14 days</button>
-        <button data-r="30">30 days</button>
-      </div>
-      <div class="card">
-        <h3>Milk per day (ml)</h3>
-        <div class="legend">
-          <span><i style="background:var(--s1)"></i>Breastfed (≈)</span>
-          <span><i style="background:var(--s2)"></i>Bottle milk</span>
-          <span><i style="background:var(--s3)"></i>Formula</span>
-        </div>
-        <div id="milkChart"></div>
-        <div class="chart-note" id="milkCap" hidden></div>
-      </div>
-      <div class="card">
-        <h3>Pumped per day (ml)</h3>
-        <div class="trend-note" id="pumpTrend"></div>
-        <div id="pumpChart"></div>
-        <div class="chart-note" id="pumpCap" hidden></div>
-      </div>
-      <h2>Daily intake (ml)</h2>
-      <table class="stat-table" id="statTable"></table>
-      <p class="muted table-note">“Feeds” counts breastfeeds and bottles.
-        “Bottle milk” is pumped milk given by bottle; “Pumped” is the amount
-        pumped that day. Tap a chart bar for its details.</p>
-    </div>
-
-    <div class="footer-actions">
-      <button id="refreshBtn" class="linkish">Refresh</button>
-      <button id="switchBtn" class="linkish">Switch sheet</button>
-      <button id="signoutBtn" class="linkish">Sign out</button>
-    </div>
-  </section>
-
-  <!-- Edit modal -->
-  <div id="overlay" hidden>
-    <div id="modal">
-      <h2>Edit entry</h2>
-      <select id="mType"></select>
-      <div class="seg" id="mSideSeg" hidden>
-        <button data-side="L">Left</button>
-        <button data-side="R">Right</button>
-        <button data-side="both">Both</button>
-      </div>
-      <div id="mBottleExtras" hidden>
-        <label class="f">Breast milk (ml)
-          <input id="mBottleBm" type="number" inputmode="numeric" min="0"></label>
-        <label class="f">Formula (ml)
-          <input id="mBottleF" type="number" inputmode="numeric" min="0"></label>
-      </div>
-      <label class="f" id="mAmountWrap" hidden>Amount pumped (ml)
-        <input id="mAmount" type="number" inputmode="numeric" min="0"></label>
-      <label class="f">Start
-        <input id="mStart" type="datetime-local"></label>
-      <label class="f" id="mDurWrap">Duration (minutes — empty = still running)
-        <input id="mDur" type="number" inputmode="numeric" min="1"></label>
-      <label class="f">Notes
-        <input id="mNotes" type="text"></label>
-      <div class="modal-actions">
-        <button id="mCancel" class="cancel">Cancel</button>
-        <button id="mSave" class="save">Save</button>
-      </div>
-      <button id="mDelete" class="delete-btn">Delete entry</button>
-    </div>
-  </div>
-
-  <!-- Settings modal -->
-  <div id="settingsOverlay" hidden>
-    <div id="settingsModal">
-      <h2>Settings</h2>
-      <label class="f">Approximate nursing amount (ml)
-        <input id="sBfMl" type="number" inputmode="numeric" min="1"></label>
-      <p class="muted hint">Each breastfeed counts as this much in the milk totals.</p>
-      <div class="modal-sub">Show in quick log</div>
-      <div class="type-grid" id="sTypeGrid"></div>
-      <p class="muted hint">Hidden activities disappear from logging and the
-        day summary — existing entries stay untouched.</p>
-      <div class="modal-actions">
-        <button id="sCancel" class="cancel">Cancel</button>
-        <button id="sSave" class="save">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Feedback toast (logged ✓ / undo / errors) -->
-  <div id="toast" class="toast" hidden>
-    <span id="toastMsg"></span>
-    <button id="toastUndo" hidden>Undo</button>
-  </div>
-
-</main>
-
+  </main>
 </body>
 </html>
